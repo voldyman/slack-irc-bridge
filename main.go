@@ -13,9 +13,10 @@ func main() {
 	users := make(map[string]int)
 	ircChannel := "#botTestChan"
 	slackChannel := "#django"
+	slackToken := ""
 
 	// slack token should be here
-	slackBot := slackbot.New("")
+	slackBot := slackbot.New(slackToken)
 
 	slackEvents, err := slackBot.Start("https://ele.slack.com")
 	if err != nil {
@@ -53,8 +54,7 @@ func main() {
 					msg.Channel, msg.Text)
 
 				if shouldHandle(users, msg.Sender) {
-					fmt.Println("Replying")
-					slackBot.SendMessage("voldy", slackChannel, "DUCK YOU")
+
 					msgBuf := bytes.NewBufferString("")
 					fmt.Fprintf(msgBuf, "<%s>: %s", msg.Sender, msg.Text)
 
