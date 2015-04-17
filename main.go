@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/sorcix/irc"
@@ -24,22 +23,19 @@ func main() {
 		return
 	}
 
-	ircEvents, ircBot, err := startIRCBot("irc.freenode.net:6667", "slackeraBot", []string{ircChannel})
+	ircBot := newIRCBot("irc.freenode.net:6667", "TestslackerBot", []string{ircChannel})
+	ircEvents, err := ircBot.Start()
 	if err != nil {
-		fmt.Println("Error connecting to irc")
+		fmt.Println("Could not connect to IRC")
 		return
 	}
 
 	for {
 		select {
-		case ev := <-ircEvents:
-			switch ev.(type) {
-			case *ircMessageEvent:
-				msg := ev.(*ircMessageEvent)
-				fmt.Printf("irc: <%s> %s\n", msg.Sender, msg.Text)
-				slackBot.SendMessage(msg.Sender, slackChannel, msg.Text)
-				incUser(users, msg.Sender)
-			}
+		case msg := <-ircEvents:
+			fmt.Printf("irc: <%s> %s\n", msg.Sender, msg.Text)
+			slackBot.SendMessage(msg.Sender, slackChannel, msg.Text)
+			incUser(users, msg.Sender)
 
 		case ev := <-slackEvents:
 			switch ev.(type) {
@@ -54,16 +50,8 @@ func main() {
 					msg.Channel, msg.Text)
 
 				if shouldHandle(users, msg.Sender) {
-
-					msgBuf := bytes.NewBufferString("")
-					fmt.Fprintf(msgBuf, "<%s>: %s", msg.Sender, msg.Text)
-
-					ircBot.SendMessage(&irc.Message{
-						Command:  "PRIVMSG",
-						Params:   []string{ircChannel},
-						Trailing: msgBuf.String(),
-					})
-					incUser(users, "voldy")
+					ircBot.SendMessage(msg.Sender, msg.Text)
+					incUser(users, msg.Sender)
 				}
 
 				//case error:
@@ -139,6 +127,7 @@ func registerConnect(channels []string) func(ircx.Sender, *irc.Message) {
 	}
 }
 
+/*
 func pingHandler(s ircx.Sender, m *irc.Message) {
 	s.Send(&irc.Message{
 		Command:  irc.PONG,
@@ -146,3 +135,4 @@ func pingHandler(s ircx.Sender, m *irc.Message) {
 		Trailing: m.Trailing,
 	})
 }
+*/

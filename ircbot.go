@@ -29,20 +29,17 @@ func newIRCBot(server, nick string, channels []string) *IRCBot {
 	}
 }
 
-func (i *IRCBot) Start() error {
+func (i *IRCBot) Start() (chan IRCMessageEvent, error) {
 	err := i.bot.Connect()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	i.registerHandlers()
-	return nil
-}
 
-func (i *IRCBot) Loop() chan IRCMessageEvent {
 	go i.bot.CallbackLoop()
 
-	return i.chEvents
+	return i.chEvents, nil
 }
 
 func (i *IRCBot) SendMessage(nick, msg string) {
@@ -79,6 +76,7 @@ func (i *IRCBot) msgHandler(s ircx.Sender, m *irc.Message) {
 }
 
 func (i *IRCBot) registerConnect(s ircx.Sender, m *irc.Message) {
+	fmt.Println("Joining channels")
 	s.Send(&irc.Message{
 		Command: irc.JOIN,
 		Params:  i.channels,
