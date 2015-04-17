@@ -42,7 +42,7 @@ func main() {
 			case *slackbot.MessageEvent:
 				msg := ev.(*slackbot.MessageEvent)
 
-				if "#"+msg.Channel != slackChannel {
+				if msg.Channel != slackChannel[1:] {
 					continue
 				}
 				fmt.Printf("Got Message\n<%s@%s>: %s\n", msg.Sender,
