@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/sorcix/irc"
-	"github.com/voldyman/ircx"
 	"github.com/voldyman/slackbot"
 )
 
@@ -50,6 +48,7 @@ func main() {
 					msg.Channel, msg.Text)
 
 				if shouldHandle(users, msg.Sender) {
+					fmt.Println("Handling Message")
 					ircBot.SendMessage(msg.Sender, msg.Text)
 					incUser(users, msg.Sender)
 				}
@@ -82,57 +81,3 @@ func shouldHandle(users map[string]int, user string) bool {
 
 	return true
 }
-
-type (
-	ircEvent interface{}
-
-	ircMessageEvent struct {
-		Sender string
-		Text   string
-	}
-)
-
-func startIRCBot(server, name string, channels []string) (chan ircEvent, *ircx.Bot, error) {
-	bot := ircx.Classic(server, name)
-	if err := bot.Connect(); err != nil {
-		return nil, nil, err
-	}
-
-	events := make(chan ircEvent)
-
-	bot.AddCallback(irc.PING, ircx.Callback{Handler: ircx.HandlerFunc(pingHandler)})
-	bot.AddCallback(irc.RPL_WELCOME, ircx.Callback{Handler: ircx.HandlerFunc(registerConnect(channels))})
-	bot.AddCallback(irc.PRIVMSG, ircx.Callback{Handler: ircx.HandlerFunc(createMsgHandler(events))})
-
-	go bot.CallbackLoop()
-
-	return events, bot, nil
-}
-
-func createMsgHandler(events chan ircEvent) func(ircx.Sender, *irc.Message) {
-	return func(s ircx.Sender, m *irc.Message) {
-		ev := &ircMessageEvent{
-			Sender: m.Name,
-			Text:   m.Trailing,
-		}
-		events <- ev
-	}
-}
-func registerConnect(channels []string) func(ircx.Sender, *irc.Message) {
-	return func(s ircx.Sender, m *irc.Message) {
-		s.Send(&irc.Message{
-			Command: irc.JOIN,
-			Params:  channels,
-		})
-	}
-}
-
-/*
-func pingHandler(s ircx.Sender, m *irc.Message) {
-	s.Send(&irc.Message{
-		Command:  irc.PONG,
-		Params:   m.Params,
-		Trailing: m.Trailing,
-	})
-}
-*/

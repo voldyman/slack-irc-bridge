@@ -12,7 +12,7 @@ type (
 	IRCBot struct {
 		channels []string
 		bot      *ircx.Bot
-		chEvents chan IRCMessageEvent
+		chEvents chan *IRCMessageEvent
 	}
 
 	IRCMessageEvent struct {
@@ -25,11 +25,11 @@ func newIRCBot(server, nick string, channels []string) *IRCBot {
 	return &IRCBot{
 		channels: channels,
 		bot:      ircx.Classic(server, nick),
-		chEvents: make(chan IRCMessageEvent),
+		chEvents: make(chan *IRCMessageEvent),
 	}
 }
 
-func (i *IRCBot) Start() (chan IRCMessageEvent, error) {
+func (i *IRCBot) Start() (chan *IRCMessageEvent, error) {
 	err := i.bot.Connect()
 	if err != nil {
 		return nil, err
@@ -65,10 +65,13 @@ func (i *IRCBot) registerHandlers() {
 		Handler: ircx.HandlerFunc(i.registerConnect),
 	})
 
+	i.bot.AddCallback(irc.PRIVMSG, ircx.Callback{
+		Handler: ircx.HandlerFunc(i.msgHandler),
+	})
 }
 
 func (i *IRCBot) msgHandler(s ircx.Sender, m *irc.Message) {
-	ev := IRCMessageEvent{
+	ev := &IRCMessageEvent{
 		Sender: m.Name,
 		Text:   m.Trailing,
 	}
@@ -76,7 +79,6 @@ func (i *IRCBot) msgHandler(s ircx.Sender, m *irc.Message) {
 }
 
 func (i *IRCBot) registerConnect(s ircx.Sender, m *irc.Message) {
-	fmt.Println("Joining channels")
 	s.Send(&irc.Message{
 		Command: irc.JOIN,
 		Params:  i.channels,
