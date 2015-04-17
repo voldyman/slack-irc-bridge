@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/voldyman/ircbot"
 	"github.com/voldyman/slackbot"
 )
 
@@ -21,7 +22,7 @@ func main() {
 		return
 	}
 
-	ircBot := newIRCBot("irc.freenode.net:6667", "TestslackerBot", []string{ircChannel})
+	ircBot := ircbot.New("irc.freenode.net:6667", "TestslackerBot", []string{ircChannel})
 	ircEvents, err := ircBot.Start()
 	if err != nil {
 		fmt.Println("Could not connect to IRC")
