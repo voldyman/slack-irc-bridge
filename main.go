@@ -45,7 +45,7 @@ func main() {
 				if msg.Channel != slackChannel[1:] {
 					continue
 				}
-				fmt.Printf("Got Message\n<%s@%s>: %s\n", msg.Sender,
+				fmt.Printf("slack: <%s@@%s> %s\n", msg.Sender,
 					msg.Channel, msg.Text)
 
 				if shouldHandle(users, msg.Sender) {
