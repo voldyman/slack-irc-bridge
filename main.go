@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/voldyman/ircbot"
 	"github.com/voldyman/slackbot"
@@ -9,11 +10,15 @@ import (
 
 func main() {
 	users := make(map[string]int)
-	ircChannel := "#botTestChan"
-	slackChannel := "#django"
+	ircNick := "slackTestBot"
 	slackToken := ""
 
-	// slack token should be here
+	// slack -> irc mapping
+	bridges := map[string]string{
+		"#django":  "#botTestChan",
+		"#django2": "#botTestChan2",
+	}
+
 	slackBot := slackbot.New(slackToken)
 
 	slackEvents, err := slackBot.Start("https://ele.slack.com")
@@ -22,7 +27,7 @@ func main() {
 		return
 	}
 
-	ircBot := ircbot.New("irc.freenode.net:6667", "TestslackerBot", []string{ircChannel})
+	ircBot := ircbot.New("irc.freenode.net:6667", ircNick, Values(bridges))
 	ircEvents, err := ircBot.Start()
 	if err != nil {
 		fmt.Println("Could not connect to IRC")
@@ -32,9 +37,12 @@ func main() {
 	for {
 		select {
 		case msg := <-ircEvents:
-			fmt.Printf("irc: <%s> %s\n", msg.Sender, msg.Text)
-			slackBot.SendMessage(msg.Sender, slackChannel, msg.Text)
-			incUser(users, msg.Sender)
+			log.Printf("IRC: <%s@%s> %s\n", msg.Sender, msg.Channel, msg.Text)
+
+			if target, ok := KeyForValue(bridges, msg.Channel); ok {
+				slackBot.SendMessage(msg.Sender, target, msg.Text)
+				incUser(users, msg.Sender, target)
+			}
 
 		case ev := <-slackEvents:
 			switch ev.(type) {
@@ -42,16 +50,22 @@ func main() {
 			case *slackbot.MessageEvent:
 				msg := ev.(*slackbot.MessageEvent)
 
-				if msg.Channel != slackChannel[1:] {
+				// we don't handle named channels without '#'
+				msg.Channel = "#" + msg.Channel
+
+				if _, ok := bridges[msg.Channel]; !ok {
 					continue
 				}
-				fmt.Printf("slack: <%s@@%s> %s\n", msg.Sender,
+				log.Printf("slack: <%s@%s> %s\n", msg.Sender,
 					msg.Channel, msg.Text)
 
-				if shouldHandle(users, msg.Sender) {
-					fmt.Println("Handling Message")
-					ircBot.SendMessage(msg.Sender, msg.Text)
-					incUser(users, msg.Sender)
+				if shouldHandle(users, msg.Sender, msg.Channel) {
+					log.Println("Handling Message")
+
+					if target, ok := bridges[msg.Channel]; ok {
+						ircBot.SendMessage(msg.Sender, msg.Text, target)
+					}
+
 				}
 
 				//case error:
@@ -64,18 +78,60 @@ func main() {
 
 }
 
-func incUser(users map[string]int, user string) {
-	if val, ok := users[user]; ok {
-		users[user] = val + 1
+// Get All the keys of the map
+func Keys(bridges map[string]string) []string {
+	vals := []string{}
+
+	for k := range bridges {
+		vals = append(vals, k)
+	}
+
+	return vals
+}
+
+// Get all values of the map
+func Values(bridges map[string]string) []string {
+	vals := []string{}
+
+	for _, v := range bridges {
+		vals = append(vals, v)
+	}
+
+	return vals
+}
+
+// Get the key of a map for the given value
+func KeyForValue(bridges map[string]string, val string) (string, bool) {
+	result := ""
+
+	for k, v := range bridges {
+		if v == val {
+			result = k
+		}
+	}
+
+	if result == "" {
+		return "", false
+	}
+	return result, true
+}
+
+// Semaphores to manages messages
+
+func incUser(users map[string]int, user, channel string) {
+	key := user + channel
+	if val, ok := users[key]; ok {
+		users[key] = val + 1
 	} else {
-		users[user] = 1
+		users[key] = 1
 	}
 }
 
-func shouldHandle(users map[string]int, user string) bool {
-	if val, ok := users[user]; ok {
+func shouldHandle(users map[string]int, user, channel string) bool {
+	key := user + channel
+	if val, ok := users[key]; ok {
 		if val > 0 {
-			users[user] = val - 1
+			users[key] = val - 1
 			return false
 		}
 	}
