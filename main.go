@@ -35,7 +35,7 @@ func main() {
 		return
 	}
 
-	ircBot.SendMessage("NickServ", "identify", ircPass)
+	ircBot.SendRawMessage("identify "+ircPass, "NickServ")
 	for {
 		select {
 		case msg := <-ircEvents:
