@@ -11,6 +11,7 @@ import (
 func main() {
 	users := make(map[string]int)
 	ircNick := "slackTestBot"
+	ircPass := ""
 	slackToken := ""
 
 	// slack -> irc mapping
@@ -34,6 +35,7 @@ func main() {
 		return
 	}
 
+	ircBot.SendMessage("NickServ", "identify", ircPass)
 	for {
 		select {
 		case msg := <-ircEvents:
